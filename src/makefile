@@ -1,5 +1,5 @@
 CC= g++ # Compiler to use
-OPTIONS= -O0 -g -Wall # -g for debug, -O2 for optimise and -Wall additional messages
+OPTIONS= -std=c++0x -O0 -g -Wall # -g for debug, -O2 for optimise and -Wall additional messages
 INCLUDES= -I./ # Directory for header file
 OBJS= Player.o Board.o Reward.o main.o # List of objects to be build
 #.PHONY: all clean # To declare all, clean are not files

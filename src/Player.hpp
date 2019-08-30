@@ -56,6 +56,7 @@ class TTTPlayer
     void PrintStats();
 
     void RLAnalyze();
+    void RLLearn();
 
  private:
     std::string  board_state;
