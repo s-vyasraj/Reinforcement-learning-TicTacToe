@@ -4,12 +4,13 @@
 void
 TTTGameInfo::UpdateGame(std::string &current_state, int played_row, int played_col) 
 {
+    std::string s = current_state;
     BoardPosition p = std::make_tuple(played_row, played_col);
 
     //TBD: check whether it exists
-    game_moves[step] = current_state;
+    game_moves[step] = s;
     
-    played_move[current_state] = p;
+    played_move[s] = p;
     game_state = current_state.c_str();
     step++;
 }
@@ -35,8 +36,6 @@ TTTPlayer::StartNewGame (bool starting_first)
     }
     waiting_for_board_state_update = true;
     current_game = std::make_shared<TTTGameInfo>(game_count);
-    game_detail[game_count] = current_game;
-    game_count++;  
 }
 
 status
@@ -79,6 +78,9 @@ TTTPlayer::GetNextRandomMove(unsigned int &row, unsigned int &col)
 void
 TTTPlayer::UpdateResultCloseGame(Player &winner, Result_t &result)
 {
+    game_detail[game_count] = current_game;
+    game_count++;  
+
     switch(result) {
         case Win:
             if (winner == player_type) {
@@ -118,7 +120,6 @@ TTTPlayer::PrintStats()
 void
 TTTPlayer::RLAnalyze()
 {
-    std::cout << "Size: " << game_detail.size() << "\n";
     int total_rewards = 0;
     for (auto it=game_detail.begin(); it != game_detail.end(); ++it) {
         auto game = it->second;
@@ -128,8 +129,101 @@ TTTPlayer::RLAnalyze()
     std::cout << "Reward Expectation: " << total_rewards << " \n";
 }
 
-void
-TTTPlayer::RLLearn()
+status
+TTTPlayer::RLSearch(std::string search, unsigned int &row, unsigned int &col)
 {
+    bool got_best_move = false;
+    int best_reward = -10000;
+    BoardPosition p;
 
+    std::cout << "Searching... \n";
+    /* Search in each game - for best moves */
+    for (auto it=game_detail.begin(); it != game_detail.end(); ++it) {
+        auto game = it->second;
+        /* Search for states and and associated reward */
+        //std::cout << " Searching in game: " << it->first ;
+        auto itr = game->reward_sequence.find(search);
+        if (itr != game->reward_sequence.end()) {
+            //std::cout << "Found with reward:" << itr->second << "\n";
+            int reward_for_move = itr->second;
+            if (reward_for_move > best_reward) {
+                auto it2 = game->played_move.find(search);
+                if (it2 != game->played_move.end()) {
+                    p = it2->second;        /* Position */
+
+                    //std::cout << "Found move \n";
+                    got_best_move = true;
+                    best_reward = reward_for_move;
+                    row = std::get<0>(p);
+                    col = std::get<1>(p);
+                }else {
+                    int i = 0;
+                    for (auto itp = game->played_move.begin(); 
+                            itp != game->played_move.end(); ++itp) {
+                        std::cout << i++ << ": " << itp->first << "\n";
+                    }
+                    std::cout<<"Fatal: Game data error: " << it->second << "\n"; 
+                    assert(0);
+                }
+            }
+        }
+    }
+    if (got_best_move) {
+        std::cout <<"Got move from Database \n";
+        if(current_game) {
+            int r = row; int c = col;
+            current_game->UpdateGame(search, r, c);
+        }
+        return OK;
+    }
+    std::cout <<"Making random move\n";
+    return GetNextRandomMove(row, col);
+}
+
+status
+TTTPlayer::GetPersonMove(unsigned int &row, unsigned int &col)
+{
+    if (waiting_for_board_state_update == true) {
+        std::cout << "FATAL: Board_state not yet updated \n";
+        assert(0);
+    }
+
+    size_t n = std::count(board_state.begin(), board_state.end(), 'e');
+    const char *c = board_state.c_str();
+    if (!n) {
+        return FAIL;
+    }
+
+    bool row_valid = false;
+    while(1) {
+        if (row_valid == false) {
+            std::cout << "Enter row [0,1,2]: ";
+            std::cin >> row;
+            if ((row > 2)) {
+                std::cout << "Enter a value between [0-2]\n";
+                continue;
+            }
+            row_valid = true;
+        }
+        std::cout << "\nEnter column[0,1,2]: ";
+        std::cin >> col;
+        if ((col > 2)) {
+            std::cout << "Enter a value between [0-2]\n";
+            continue;
+        }
+
+        int pos = row*3+col;
+        if(c[pos] == 'e') {    /* found an empty slot */
+            int r = row; int c = col;
+            if (current_game) {
+                current_game->UpdateGame(board_state, r, c);
+            }
+            return OK;
+        } else {
+            std::cout << "\nSlot not empty - reenter\n";
+            row_valid = false;
+            continue;
+        }
+    }
+    return FAIL;
 }

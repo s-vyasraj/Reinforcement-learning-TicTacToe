@@ -26,6 +26,7 @@ class TTTGameInfo {
     std::map<std::string, BoardPosition> played_move;   /*current_state, row, col */
     std::map<std::string, int> reward_sequence;   /*current_state, row, col */
 };
+
 typedef std::shared_ptr<TTTGameInfo> TTTGameInfo_h;
 
 class TTTPlayer 
@@ -47,6 +48,7 @@ class TTTPlayer
     }
 
     status GetNextRandomMove(unsigned int &row, unsigned int &col);
+    status GetPersonMove(unsigned int &row, unsigned int&col);
     void   UpdateReward(int i) { current_game->UpdateReward(i); };
 
     char GetChar() { return token; }
@@ -56,7 +58,7 @@ class TTTPlayer
     void PrintStats();
 
     void RLAnalyze();
-    void RLLearn();
+    status RLSearch(std::string search, unsigned int &r, unsigned int &col);
 
  private:
     std::string  board_state;
